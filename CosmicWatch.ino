@@ -1,5 +1,5 @@
 // definitions
-#define DI1 tbd // digital input pin for the AND gate
+#define DI1 30 // digital input pin for the AND gate
 #define DO1 tbd // digital output of the reset switch
 
 #define ANA1 tbd // analog input pin for the first SiPM
@@ -107,8 +107,12 @@ void on_detection(){
 // unfinished pseudocode: ignore for now
 void benchmark_di(){ // do the same for analogRead.
   // start timer
-  for i // 1000:
-  digitalRead(di) // try with fast digital read
-  // end timer
-  print(time)
+    for (int i=0; i<=1000; i++){
+        Serial.print("Time: ");
+        pinTime = millis();
+
+        digitalRead(DI1);
+        Serial.println(pinTime);
+      } )
+}
 }
