@@ -1,5 +1,5 @@
 // definitions
-#define DI1 = tbd // digital input pin for the AND gate
+#define DI1 tbd // digital input pin for the AND gate
 #define DO1 tbd // digital output of the reset switch
 
 #define ANA1 tbd // analog input pin for the first SiPM
