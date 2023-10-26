@@ -17,8 +17,21 @@
 #define one_min   60*one_sec                   // one minute of time
 #define one_hour  60*one_min                   // one hour of time
 //
-#define eventTime0  one_min*3                  //this event every 3 min
+#define eventTime0  one_sec*10                 //this event every 3 min
 #define eventTime1  one_min*60                  //this event every 60 min
+
+//definitions for pins 
+#define DI1 30 // digital input pin for the AND gate - IO7
+#define DO1 tbd // digital output of the reset switch
+
+#define ANA1 6 // analog input pin for the first SiPM
+#define ANA2 7 // analog input pin for the second SiPM
+#define ANA3 8 // analog input pin for the third SiPM
+
+#define LED1 tbd // digital output to led1
+#define LED2 tbd // digital output to led2
+#define LED3 tbd // digital output to led3 
+unsigned long t0;
 ///////////////////////////////////////////////////////////////////////////
 /**
    @brief Flying function is used to capture all logic of an experiment during flight.
@@ -41,7 +54,17 @@ void Flying() {
   //   Here to set up flight conditions i/o pins, atod, and other special condition
   //   of your program
   //
+  pinMode(DI1, INPUT;
+  pinMode(DO1, OUTPUT);
+  pinMode(ANA1, INPUT);
+  pinMode(ANA2, INPUT);
+  pinMode(ANA3, INPUT);
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
 
+  attachInterrupt(io1, on_detection, RISING);
+}
   //
   //******************************************************************
 
@@ -97,6 +120,16 @@ void Flying() {
       cmd_takeSphoto();                          //Take photo and send it
       delay(100);
 
+      //t0 = millis();
+      //for (int i=0; i<=100000; i++){
+      //  analogWrite(ANA1, 100);
+        //digitalWrite(DI1, HIGH);
+        // Serial.print(digitalRead(DI1)+" "+millis());
+        //delay(1000);
+      } 
+      Serial.print("Franklin and Alice's testing Time: ");
+      Serial.print((millis()-t0));
+      Serial.print("\n");
       // Call the freeMemory function and print the result
       // cmd_stackandheap();                          //enable to know stack and heap after photo time
       //
