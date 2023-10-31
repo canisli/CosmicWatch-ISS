@@ -1,18 +1,25 @@
+#include <SPI.h>
+#include <SD.h>
+#include <EEPROM.h>
+#include <math.h>
+#include <string>
+
 // definitions
 #define DI1 30 // digital input pin for the AND gate
-#define DO1 tbd // digital output of the reset switch
+#define DO1 -1 // digital output of the reset switch
 
-#define ANA1 tbd // analog input pin for the first SiPM
-#define ANA2 tbd // analog input pin for the second SiPM
-#define ANA3 tbd // analog input pin for the third SiPM
+#define ANA1 -1 // analog input pin for the first SiPM
+#define ANA2 -1 // analog input pin for the second SiPM
+#define ANA3 -1 // analog input pin for the third SiPM
 
-#define LED1 tbd // digital output to led1
-#define LED2 tbd // digital output to led2
-#define LED3 tbd // digital output to led3 
+#define LED1 -1 // digital output to led1
+#define LED2 -1 // digital output to led2
+#define LED3 -1 // digital output to led3 
 
-const int threshold = tbd // ampltiude threshold to flash LED
-const string myFile = tbd // location to SD card file
-const bool groundMode = True // set to False when sending to ISS. REMOVE LED before sending to space. Light leak could cause false detection.
+const int threshold = -1; // ampltiude threshold to flash LED
+const std::string filename = 'tbd';
+File myFile;
+const bool groundMode = true; // set to False when sending to ISS. REMOVE LED before sending to space. Light leak could cause false detection.
 
 //Calibration fit data for 10k,10k,249,10pf; 20nF,100k,100k, 0,0,57.6k,  1 point
 // use arbitrary wave form generator to get our own values.
@@ -52,73 +59,78 @@ void setup(){
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
-
+  myFile = SD.open(filename, FILE_WRITE)
   attachInterrupt(io1, on_detection, RISING);
 }
+
 void loop(){ // flicker LEDs for debugging purposes
-    adc1 = analogRead(ANA1)
-    adc2 = analogRead(ANA2)
-    adc3 = analogRead(ANA3)
-    
-    if (adc1 > threshold){
-      digitalWrite(LED1, HIGH);
+    if groundMode {
+      adc1 = analogRead(ANA1)
+      adc2 = analogRead(ANA2)
+      adc3 = analogRead(ANA3)
+      
+      if (adc1 > threshold){
+        digitalWrite(LED1, HIGH);
+      }
+      if (adc2 > threshold){
+        digitalWrite(LED2, HIGH);
+      }
+      if (adc3 > threshold){
+        digitalWrite(LED3, HIGH);
+      }
+      // TODO: change to use pulse width modulation
+      delay(10); //wait for 0.1 second
+      digitalWrite(LED1, LOW);
+      digitalWrite(LED2, LOW);
+      digitalWrite(LED3, LOW);
     }
-    if (adc2 > threshold){
-      digitalWrite(LED2, HIGH);
-    }
-    if (adc3 > threshold){
-      digitalWrite(LED3, HIGH);
-    }
-    // change to use pulse width modulation
-    delay(10); //wait for 0.1 second
-    digitalWrite(LED1, LOW);
-    digitalWrite(LED2, LOW);
-    digitalWrite(LED3, LOW);
 }
 // *************************************************************************************************
 
 void on_detection(){
-   noInterrupts()
-   adc1 = analogRead(ANA1)
-   adc2 = analogRead(ANA2)
-   adc3 = analogRead(ANA3)
+    noInterrupts()
+    adc1 = analogRead(ANA1)
+    adc2 = analogRead(ANA2)
+    adc3 = analogRead(ANA3)
 
-   if (adc1 > threshold && adc2 > threshold){
+    if groundMode {
+      if (adc1 > threshold && adc2 > threshold){
       digitalWrite(LED1, HIGH);
       digitalWrite(LED2, HIGH);
+      }
+      if (adc3 > threshold){
+        digitalWrite(LED3, HIGH); //additionally deadtime: 0.5 * 3 = 1.5μs is negligible
+      }
     }
-   if (adc3 > threshold){
-      digitalWrite(LED3, HIGH); //additionally deadtime: 0.5 * 3 = 1.5μs is negligible
-   }
-    
-   temperatureC = ... // maybe read from tempertaure sensor   
-   hall_probe1 = ...
-   hall_probe2 = ...
-   measurement_deadtime = total_deadtime;
-   time_stamp = millis() - start_time;
-   measurement_t1 = micros();
+  
+    temperatureC = ... // maybe read from tempertaure sensor   
+    hall_probe1 = ...
+    hall_probe2 = ...
+    measurement_deadtime = total_deadtime;
+    time_stamp = millis() - start_time;
+    measurement_t1 = micros();
 
-   digitalWrite(DO1, HIGH)  // Turn on reset switch
+    digitalWrite(DO1, HIGH)  // Turn on reset switch
 
-   // put this between reset digital writes as delay.
-   output_str = (String)count + " " + time_stamp+ " " + adc1 + " " adc2 + " " adc3 + " " +
+    // put this between reset digital writes as delay.
+    output_str = (String)count + " " + time_stamp+ " " + adc1 + " " adc2 + " " adc3 + " " +
                 get_sipm_voltage(adc1) + get_sipm_voltage(adc2)+ " " + get_sipm_voltage(adc3)+ " " + 
                   measurement_deadtime+ " " + temperatureC // add other variables like temperature and magnetic field later
-   if groundMode:
-     Serial.println(output_str)
-   myFile.println(output_str);
-   myFile.flush(); // is this needed every loop? 
+    if groundMode:
+      Serial.println(output_str)
+    myFile.println(output_str);
+    myFile.flush(); // is this needed every loop? 
         
-   digitalWrite(DO1, LOW) // Turn off reset switch
+    digitalWrite(DO1, LOW) // Turn off reset switch
 
-   while(analogRead(ANA1) > RESET_THRESHOLD){
-     Serial.println('Something went wrong*. Check waveform');
-   }
+    while(analogRead(ANA1) > RESET_THRESHOLD){
+      Serial.println('Something went wrong*. Check waveform');
+    }
 
-   digitalWrite(LED1, LOW);
-   digitalWrite(LED2, LOW);
-   digitalWrite(LED3, LOW);
-   total_deadtime += (micros() - measurement_t1) / 1000.;
+    digitalWrite(LED1, LOW);
+    digitalWrite(LED2, LOW);
+    digitalWrite(LED3, LOW);
+    total_deadtime += (micros() - measurement_t1) / 1000.;
     interrupts()
 }
 
