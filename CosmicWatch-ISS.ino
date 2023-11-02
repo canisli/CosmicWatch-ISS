@@ -1,4 +1,3 @@
-// test
 #include <SPI.h>
 #include <SD.h>
 #include <EEPROM.h>
