@@ -60,14 +60,14 @@ void setup(){
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
   myFile = SD.open(filename, FILE_WRITE)
-  attachInterrupt(io1, on_detection, RISING);
+  attachInterrupt(DI1, on_detection(), RISING);
 }
 
 void loop(){ // flicker LEDs for debugging purposes
     if groundMode {
-      adc1 = analogRead(ANA1)
-      adc2 = analogRead(ANA2)
-      adc3 = analogRead(ANA3)
+      adc1 = analogRead(ANA1);
+      adc2 = analogRead(ANA2);
+      adc3 = analogRead(ANA3);
       
       if (adc1 > threshold){
         digitalWrite(LED1, HIGH);
@@ -88,10 +88,10 @@ void loop(){ // flicker LEDs for debugging purposes
 // *************************************************************************************************
 
 void on_detection(){
-    noInterrupts()
-    adc1 = analogRead(ANA1)
-    adc2 = analogRead(ANA2)
-    adc3 = analogRead(ANA3)
+    noInterrupts();
+    adc1 = analogRead(ANA1);
+    adc2 = analogRead(ANA2);
+    adc3 = analogRead(ANA3);
 
     if groundMode {
       if (adc1 > threshold && adc2 > threshold){
@@ -117,7 +117,7 @@ void on_detection(){
                 get_sipm_voltage(adc1) + get_sipm_voltage(adc2)+ " " + get_sipm_voltage(adc3)+ " " + 
                   measurement_deadtime+ " " + temperatureC // add other variables like temperature and magnetic field later
     if groundMode:
-      Serial.println(output_str)
+      Serial.println(output_str);
     myFile.println(output_str);
     myFile.flush(); // is this needed every loop? 
         
