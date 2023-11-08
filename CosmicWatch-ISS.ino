@@ -14,7 +14,8 @@
 
 #define LED1 -1 // digital output to led1
 #define LED2 -1 // digital output to led2
-#define LED3 -1 // digital output to led3 
+#define LED3 -1 // digital output to led3
+#define LED4 -1 // digital output to coincidence led
 
 const int threshold = -1; // ampltiude threshold to flash LED
 const std::string filename = 'tbd';
@@ -51,14 +52,15 @@ float get_sipm_voltage(float adc_value){
 
 // *************************************************************************************************
 void setup(){
-  pinMode(DI1, INPUT)
-  pinMode(DO1, OUTPUT)
-  pinMode(ANA1, INPUT)
-  pinMode(ANA2, INPUT)
+  pinMode(DI1, INPUT);
+  pinMode(DO1, OUTPUT);
+  pinMode(ANA1, INPUT);
+  pinMode(ANA2, INPUT);
   pinMode(ANA3, INPUT);
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
+  pinMode(LED4, OUTPUT);
   myFile = SD.open(filename, FILE_WRITE)
   attachInterrupt(DI1, on_detection(), RISING);
 }
@@ -94,12 +96,15 @@ void on_detection(){
     adc3 = analogRead(ANA3);
 
     if groundMode {
-      if (adc1 > threshold && adc2 > threshold){
-      digitalWrite(LED1, HIGH);
-      digitalWrite(LED2, HIGH);
+      digitalWrite(LED4, HIGH);
+      if (adc1 > threshold){
+        digitalWrite(LED1, HIGH);
+      }
+      if (adc2 > threshold){
+        digitalWrite(LED2, HIGH);
       }
       if (adc3 > threshold){
-        digitalWrite(LED3, HIGH); //additionally deadtime: 0.5 * 3 = 1.5μs is negligible
+        digitalWrite(LED3, HIGH);
       }
     }
   
@@ -130,6 +135,7 @@ void on_detection(){
     digitalWrite(LED1, LOW);
     digitalWrite(LED2, LOW);
     digitalWrite(LED3, LOW);
+    digitalWrite(LED4, LOW);
     total_deadtime += (micros() - measurement_t1) / 1000.;
     interrupts()
 }
