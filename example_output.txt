@@ -1,0 +1,23 @@
+#####################################################################################################
+### CosmicWatch-ISS: Measuring primary cosmic rays aboard the ISS
+### VCHS IRL Team C 2023-24
+### Members: Canis Li, Minghao Zou, Aaron Cao, Dylan Wong, Mahesh Rakasi, Junehee Lee, Franklin Tan, Alice Zou
+### Supervisors: Spencer Axani, Howell Ivy, Marcel Marc, Emeka Okekeocha
+###
+### Table Columns: Unix Time[s], Count, ADC1[0-1023], ADC2[0-1023], ADC3[0-1023], Deadtime[ms], Temp[C], Pressure[hPa]
+###      ADC[0-1023]: Analog voltage read at the pin our nth SiPM is connected to
+###      Deadtime[ms]: CPU time spent not measuring cosmic rays
+#####################################################################################################
+Begin  actual
+
+1699575750 1 140 143 0 33 35.9 1010.53
+1699575750 2 140 143 0 70 35.9 1010.53
+1699575751 3 140 143 0 103 35.9 1010.3
+1699575753 4 140 143 0 155 35.9 1010.53
+1699575754 5 140 143 0 201 35.9 1010.53
+1699575754 6 140 143 0 288 35.9 1010.53
+
+.... and so on. Each row corresponds to one coincidence measurement, which we expect 
+to occur at a cadence of 1-2 Hz aboard the ISS.
+In 30 minutes, we expect ~2700 lines to be printed.
+Each line is ~40 bytes.
