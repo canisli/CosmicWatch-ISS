@@ -31,12 +31,11 @@
 #define one_hour  60*one_min                 // one hour of time
 //
 //
-#define TimeEvent1_time     ((one_min * 20) / SpeedFactor)      //take a photo time
-#define Sensor1time         ((one_min * 15) / SpeedFactor)      //Time to make Sensor1 readings 
-#define Sensor2time         ((one_sec * 20)  / SpeedFactor) 
+#define TimeEvent1_time     ((one_sec * 30))      //take a photo time
+#define Sensor1time         ((one_sec * 11))      //Time to make Sensor1 readings 
+#define Sensor2time         ((one_sec * 1.7)) 
 //
-  int sensor1count = 0;     //counter of times the sensor has been accessed
-  int sensor2count = 0;     //counter of times the sensor has been accessed
+  int counts = 0;     //counter of times coincidence has been measured
   int State =   0;          //FOR TESTING ONLY WILL SWITCH FROM SPI CAMERA TO SERIAL CAMERA EVERY HOUR
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -47,28 +46,26 @@
 //   Beginning of the flight program setup
 //
 //
-void Flying(){
-  time sleep (24 hours); // when power resests, we don't want to run this again. // maybe we don't even need this
+void Flying() {
   Serial.println("Here to Run flight program, not done yet 20230718");
   Serial.println(" 20231116 working on it");
   //
   uint32_t TimeEvent1 = millis();               //set TimeEvent1 to effective 0
   uint32_t Sensor1Timer = millis();             //clear sensor1Timer to effective 0
   uint32_t Sensor2Timer = millis();             //clear sensor1Timer to effective 0
+  uint32_t Sensor1Deadmillis = millis();        //clear mills for difference
   uint32_t Sensor2Deadmillis = millis();        //clear mills for difference
   //
   uint32_t one_secTimer = millis();             //set happens every second
   uint32_t sec60Timer = millis();               //set minute timer
 
-  //************************************************************************************************************************************************************
+  //*****************************************************************
   //   Here to set up flight conditions i/o pins, atod, and other special condition
   //   of your program
   //
-  copy over the things from setup()
-  attachInterrupt
-  declare pins, yada yada
   //
-  //************************************************************************************************************************************************************
+  //
+  //******************************************************************
 
   //------------ flying -----------------------
 
@@ -93,7 +90,7 @@ void Flying(){
   //***********************************************************************
   //***********************************************************************
   //
-  while (1) {  // Canis and Alice: THIS IS WHERE THE PHOTO LOOP STARTS
+  while (1) {
     //
     //----------- Test for terminal abort command (x) from flying ----------------------
     //
@@ -111,29 +108,10 @@ void Flying(){
     //  See above for TimeEvent1_time settings between this event
     //
     if ((millis() - TimeEvent1) > TimeEvent1_time) {
-      TimeEvent1 = millis();                    //yes is time now reset TimeEvent1
-          //  Take a photo using the serial c329 camera and place file name in Queue
-      if (State == 0){      //which state ?             
-          cmd_takeSphoto();            //Take serial photo and send it
-      }
-          //  Take a photo using the SPI c329 camera and place file name in Queue
-          //  Hardware Note: to use the Spi camera - a jumper must be connected from IO0
-          //  the the hold pin on J6.......
-      if (State == 1){
-          cmd_takeSpiphoto();         //Take SPI photo and send it
-      }
-          //  no camera - Send a 30k of buffer datta in place of a photo to the output Queue
-      if (State == 2){
-          nophoto30K();               //Use photo buffer for data
-      }
-          //  no camera - send just text appended with data to the output Queue
-      if (State == 3){
-          nophotophoto();               //photo event with no photo just to transfer data
-      }
-      State++;                          //go to the next state
-      if (State == 4){                  //reset the state back to 0
-        State = 0;                      //state to 0
-      }
+      TimeEvent1 = millis();
+      Serial.println("Running nophoto30K");
+      dataappend(0,0,0,0); // Sanity check for the SD card
+      nophoto30K();               //Use photo buffer for data
     }                                               //end of TimeEvent1_time
     //------------------------------------------------------------------
     //
@@ -179,44 +157,43 @@ void Flying(){
       //
        DotStarOff();
     }  // end of one second routine
-//
-//**********************************************************************
-//*********** Read Sensor1 Event read and add to text buffer************
-//**********************************************************************
+
     //
     if ((millis() - Sensor1Timer) > Sensor1time) {    //Is it time to read?
+      t_start = millis(); //set millis this visit
+      Serial.println("WOW BIG COSMIC RAY!!!!!!!!!!!!!!");
       Sensor1Timer = millis();                        //Yes, lets read the sensor1
-      sensor1count++;
-      int value1 = sensor1count;              //sensor count number up from zero
-      int value2 = 55000;                     //SIMULATED SENSOR VALUE,need to calculate real value
-      int value3 = 14;                        //SIMULATED SENSOR VALUE,need to calculate real value
+      counts++;
       //
-      add2text(value1, value2, value3);       //add the values to the text buffer
-      //    
+      //  Here to calculate and store data
+      //
+      //
+      //**** now get ampli and SiPM *****
+      int ampli = 9000;              //SIMULATED
+      int SiPM  = random(9000);              //SIMULATED
+      //***** end simulated *************
+      //
+      dataappend(sensor1count, ampli, SiPM, Deadtime);
+      int Deadtime = millis()-t_start;      
     }     // End of Sensor1 time event
     //
-//**********************************************************************
-//*********** Read Sensor2 Event read and add to text buffer************
-//*********** Test of filling the 30K data buffer for lots of data *****
-//********************************************************************** 
-    //  If it is event driven then remove the Sensor2Timer evvvvvend 
-    //  here to get the  data for the event 
-    //
+
     if ((millis() - Sensor2Timer) > Sensor2time) {    //Is it time to read?
+      Serial.println("Cosmic ray measurment!");
       Sensor2Timer = millis();                        //Yes, lets read the sensor1
-      sensor2count++;
+      counts++;
       //
       //  Here to calculate and store data
       //
       int Deadtime = millis()-Sensor2Deadmillis;      //time in millis sence last visit
-      Sensor2Deadmillis = millis();                   //set millis this visit
+      Sensor2Deadmillis = millis(); //set millis this visit
       //
       //**** now get ampli and SiPM *****
-      int ampli = 555;              //SIMULATED
-      int SiPM  = 888;              //SIMULATED
+      int ampli = random(300);              //SIMULATED
+      int SiPM  = 77;              //SIMULATED
       //***** end simulated *************
       //
-      dataappend(sensor2count, ampli, SiPM, Deadtime);
+      dataappend(counts , ampli, SiPM, Deadtime);
     }     // End of Sensor2Timer          
   }       // End of while 
 }         //End nof Flighting
@@ -281,14 +258,14 @@ void add2text(int value1,int value2,int value3){                 //Add value to 
 //  Append data to the large data buffer buffer always enter unit time of data added
 //  enter: void dataappend(int counts, int ampli, int SiPM, int Deadtime) (4 values)
 //
-// MODIFIED BY TEAM C: INPUT FORMATTED STRING
-void dataappend(String results) {          //entry, add line with values to databuffer
+void dataappend(int counts,int ampli,int SiPM,int Deadtime) {          //entry, add line with values to databuffer
   //----- get and set time to entry -----
   DateTime now = rtc.now();                                               //get time of entry
   String stringValue = String(now.unixtime());                            //convert unix time to string
   const char* charValue = stringValue.c_str();                            //convert to a C string value
   appendToBuffer(charValue);                                              //Sent unix time to databuffer
   //----- add formated string to buffer -----
+  String results = " - " + String(counts) + " " + String(ampli) + " " + String(SiPM) + " " + String (Deadtime) + "\r\n";  //format databuffer entry
   const char* charValue1 = results.c_str();                               //convert to a C string value
   appendToBuffer(charValue1);                                             //Send formated string to databuff
   //
