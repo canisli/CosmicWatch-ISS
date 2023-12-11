@@ -5,17 +5,12 @@
 #include <string>
 
 // definitions
-#define DI1 30 // digital input pin for the AND gate
-#define DO1 -1 // digital output of the reset switch
+#define IO0 14 // AND gate
+#define IO1 18 // trigger reset
 
-#define ANA1 -1 // analog input pin for the first SiPM
-#define ANA2 -1 // analog input pin for the second SiPM
-#define ANA3 -1 // analog input pin for the third SiPM
-
-#define LED1 -1 // digital output to led1
-#define LED2 -1 // digital output to led2
-#define LED3 -1 // digital output to led3
-#define LED4 -1 // digital output to coincidence led
+#define ANA0 5 // analog input pin for the first SiPM
+#define ANA1 6 // analog input pin for the second SiPM
+#define ANA2 7 // analog input pin for the third (lone) SiPM
 
 const int threshold = -1; // ampltiude threshold to flash LED
 const std::string filename = 'tbd';
@@ -52,16 +47,12 @@ float get_sipm_voltage(float adc_value){
 
 // *************************************************************************************************
 void setup(){
-  pinMode(DI1, INPUT);
-  pinMode(DO1, OUTPUT);
+  pinMode(IO0,  INPUT);
+  pinMode(IO1, OUTPUT);
+  pinMode(ANA0, INPUT);
   pinMode(ANA1, INPUT);
   pinMode(ANA2, INPUT);
-  pinMode(ANA3, INPUT);
-  pinMode(LED1, OUTPUT);
-  pinMode(LED2, OUTPUT);
-  pinMode(LED3, OUTPUT);
-  pinMode(LED4, OUTPUT);
-  myFile = SD.open(filename, FILE_WRITE)
+
   attachInterrupt(DI1, on_detection(), RISING);
 }
 
@@ -91,53 +82,33 @@ void loop(){ // flicker LEDs for debugging purposes
 
 void on_detection(){
     noInterrupts();
+    adc0 = analogRead(ANA0);
     adc1 = analogRead(ANA1);
     adc2 = analogRead(ANA2);
-    adc3 = analogRead(ANA3);
 
-    if groundMode {
-      digitalWrite(LED4, HIGH);
-      if (adc1 > threshold){
-        digitalWrite(LED1, HIGH);
-      }
-      if (adc2 > threshold){
-        digitalWrite(LED2, HIGH);
-      }
-      if (adc3 > threshold){
-        digitalWrite(LED3, HIGH);
-      }
-    }
-  
-    temperatureC = ... // maybe read from tempertaure sensor   
-    hall_probe1 = ...
-    hall_probe2 = ...
     measurement_deadtime = total_deadtime;
     time_stamp = millis() - start_time;
     measurement_t1 = micros();
 
-    digitalWrite(DO1, HIGH)  // Turn on reset switch
+    digitalWrite(IO1, HIGH)  // Turn on reset switch
 
     // put this between reset digital writes as delay.
     output_str = (String)count + " " + time_stamp+ " " + adc1 + " " adc2 + " " adc3 + " " +
                 get_sipm_voltage(adc1) + get_sipm_voltage(adc2)+ " " + get_sipm_voltage(adc3)+ " " + 
                   measurement_deadtime+ " " + temperatureC + "\r\n" // add other variables like temperature and magnetic field later
     
-    if groundMode:
-      Serial.print(output_str);
-    dataappend(output_str)
-    myFile.print(output_str);
-    myFile.flush(); // is this needed every loop? 
+
+    Serial.print(output_str);
+    //dataappend(output_str)
+    //myFile.print(output_str);
+    //myFile.flush(); // is this needed every loop? 
         
-    digitalWrite(DO1, LOW) // Turn off reset switch
+    digitalWrite(IO1, LOW); // Turn off reset switch
 
-    while(analogRead(ANA1) > RESET_THRESHOLD){
-      Serial.println('Something went wrong*. Check waveform');
-    }
+    // while(analogRead(ANA1) > RESET_THRESHOLD){
+    //   Serial.println('Something went wrong*. Check waveform');
+    // }
 
-    digitalWrite(LED1, LOW);
-    digitalWrite(LED2, LOW);
-    digitalWrite(LED3, LOW);
-    digitalWrite(LED4, LOW);
     total_deadtime += (micros() - measurement_t1) / 1000.;
     interrupts()
 }
@@ -153,4 +124,4 @@ void benchmark_di(){ // do the same for analogRead.
         Serial.println(pinTime);
       } )
 }
-}
+
