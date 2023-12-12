@@ -35,7 +35,7 @@
 #define Sensor1time         ((one_sec * 11))      //Time to make Sensor1 readings 
 #define Sensor2time         ((one_sec * 1.7)) 
 //
-  int Deadtime = 0;
+  int deadtime = 0;
   int counts = 0;     //counter of times coincidence has been measured
   int State =   0;          //FOR TESTING ONLY WILL SWITCH FROM SPI CAMERA TO SERIAL CAMERA EVERY HOUR
   uint32_t last_nophoto30K_unixtime = 0;
@@ -65,7 +65,12 @@ void Flying() {
   //   Here to set up flight conditions i/o pins, atod, and other special condition
   //   of your program
   //
-  //
+  Serial.println("Instantiated pinModes");
+  pinMode(IO0,  INPUT);
+  pinMode(IO1, OUTPUT);
+  pinMode(ANA0, INPUT);
+  pinMode(ANA1, INPUT);
+  pinMode(ANA2, INPUT);
   //
   //******************************************************************
 
@@ -103,6 +108,23 @@ void Flying() {
         return  ;                     //return back to poeration sellection
       }                               //end check
     }                                 //end abort check
+    
+//    if (digitalRead(IO0 == HIGH)) {
+//      noInterrupts();
+//      uint32_t t_start = millis();
+//      
+//      digitalWrite(IO1, HIGH);  // Trigger reset
+//      Serial.println("Got coincidence measurment!");
+//      counts += 1;
+//      int adc0 = analogRead(ANA0);
+//      int adc1 = analogRead(ANA1);
+//      int adc2 = analogRead(ANA2);
+//      
+//      dataappend(counts, adc0, adc1, adc2, deadtime); 
+//      digitalWrite(IO1, LOW); // Turn off trigger reset
+//      deadtime = millis() - t_start;
+//      interrupts();
+//    }
     // Events to simulate cosmic ray detections
     if ((millis() - Sensor1Timer) > Sensor1time) {    //Is it time to read?
           Serial.println("WOW BIG COSMIC RAY!!!!!!!!!!!!!!");
@@ -118,7 +140,7 @@ void Flying() {
           int SiPM  = random(9000);              //SIMULATED
           //***** end simulated *************
           //
-          dataappend(counts, ampli, SiPM, Sensor1Deadmillis);
+          dataappend(counts, 0, ampli, SiPM, Sensor1Deadmillis);
           Sensor1Deadmillis = millis()-t_start;      
         }     // End of Sensor1 time event
       //
@@ -134,8 +156,9 @@ void Flying() {
       int SiPM  = 77;              //SIMULATED
       //***** end simulated *************
       //
-      dataappend(counts , ampli, SiPM, Sensor2Deadmillis);
+      dataappend(counts , 0, ampli, SiPM, Sensor2Deadmillis);
       Sensor2Deadmillis = millis()-t_start;
+      Serial.println(String(digitalRead(IO0)) + " " + String(analogRead(ANA0)) + " " + String(analogRead(ANA1)) + " " + String(analogRead(ANA2)));
     }
 //------------------------------------------------------------------
 //
@@ -147,7 +170,7 @@ void Flying() {
     if ((millis() - TimeEvent1) > TimeEvent1_time) {
       TimeEvent1 = millis();
       Serial.println("Running nophoto30K");
-      dataappend(0,0,0,0); // Sanity check for the SD card
+      dataappend(0,0, 0,0,0); // Sanity check for the SD card
       nophoto30K();               //Use photo buffer for data
       last_nophoto30K_unixtime= rtc.now().unixtime();
     }                                               //end of TimeEvent1_time
@@ -260,14 +283,14 @@ void add2text(int value1,int value2,int value3){                 //Add value to 
 //  Append data to the large data buffer buffer always enter unit time of data added
 //  enter: void dataappend(int counts, int ampli, int SiPM, int Deadtime) (4 values)
 //
-void dataappend(int counts,int ampli,int SiPM,int Deadtime) {          //entry, add line with values to databuffer
+void dataappend(int counts,int adc0,int adc1, int adc2, int Deadtime) {          //entry, add line with values to databuffer
   //----- get and set time to entry -----
   DateTime now = rtc.now();                                               //get time of entry
   String stringValue = String(now.unixtime()-last_nophoto30K_unixtime);                            //convert unix time to string
   const char* charValue = stringValue.c_str();                            //convert to a C string value
   appendToBuffer(charValue);                                              //Sent unix time to databuffer
   //----- add formated string to buffer -----
-  String results = " - " + String(counts) + " " + String(ampli) + " " + String(SiPM) + " " + String (Deadtime) + "\r\n";  //format databuffer entry
+  String results = " - " + String(counts) + " " + String(adc0) + " " + String(adc1) + " " + String(adc2) + " " + String (Deadtime) + "\r\n";  //format databuffer entry
   const char* charValue1 = results.c_str();                               //convert to a C string value
   appendToBuffer(charValue1);                                             //Send formated string to databuff
   //

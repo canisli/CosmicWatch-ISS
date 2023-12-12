@@ -14,7 +14,7 @@ int value1 = 0;                                       //valus used in add2text
 int value2 = 0;
 int value3 = 0;
 //
-void dataappend(int sensor2count,int ampli,int SiPM,int Deadtime);
+void dataappend(int counts,int adc0,int adc1, int adc2, int Deadtime);
 void appendToBuffer(const char* data);
 //
 #endif
