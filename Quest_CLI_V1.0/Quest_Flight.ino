@@ -33,7 +33,7 @@
 //
 #define TimeEvent1_time     ((one_sec * 30))      //take a photo time
 #define Sensor1time         ((one_sec * 11))      //Time to make Sensor1 readings 
-#define Sensor2time         ((one_sec * 1.7)) 
+#define Sensor2time         ((one_sec * 1.70)) //one_sec*1.7 before 
 //
   int deadtime = 0;
   int counts = 0;     //counter of times coincidence has been measured
@@ -48,6 +48,9 @@
 //   Beginning of the flight program setup
 //
 //
+
+uint32_t t_start; 
+int t1=0;
 void Flying() {
   Serial.println("Here to Run flight program, not done yet 20230718");
   Serial.println(" 20231116 working on it");
@@ -66,11 +69,18 @@ void Flying() {
   //   of your program
   //
   Serial.println("Instantiated pinModes");
-  pinMode(IO0,  INPUT);
-  pinMode(IO1, OUTPUT);
+  pinMode(IO0,  INPUT);  //And Gate
+  pinMode(IO1, OUTPUT);  //trigger reset
   pinMode(ANA0, INPUT);
   pinMode(ANA1, INPUT);
   pinMode(ANA2, INPUT);
+ 
+  t1 = millis();
+
+  attachInterrupt(IO0, on_detection, RISING);
+
+  Serial.println("Time after interrupt: " +( millis()-t1));
+
   //
   //******************************************************************
 
@@ -126,10 +136,12 @@ void Flying() {
 //      interrupts();
 //    }
     // Events to simulate cosmic ray detections
+    
+    
     if ((millis() - Sensor1Timer) > Sensor1time) {    //Is it time to read?
           Serial.println("WOW BIG COSMIC RAY!!!!!!!!!!!!!!");
           Sensor1Timer = millis();   
-          uint32_t t_start = millis();                   
+          t_start = millis();                   
           counts++;
           //
           //  Here to calculate and store data
@@ -146,6 +158,8 @@ void Flying() {
       //
     
     if ((millis() - Sensor2Timer) > Sensor2time) {    //Is it time to read?
+      
+      
       Serial.println("Cosmic ray detected!");
       Sensor2Timer = millis();                   
       uint32_t t_start = millis(); 
@@ -159,6 +173,19 @@ void Flying() {
       dataappend(counts , 0, ampli, SiPM, Sensor2Deadmillis);
       Sensor2Deadmillis = millis()-t_start;
       Serial.println(String(digitalRead(IO0)) + " " + String(analogRead(ANA0)) + " " + String(analogRead(ANA1)) + " " + String(analogRead(ANA2)));
+    
+    /*
+    int t0=millis();
+      for (int i=0; i<=10000000; i++){
+        //Serial.print("Time: ");
+    
+        digitalRead(IO0);
+        //Serial.println(pinTime);
+      } 
+      
+      Serial.print("Time: ");
+      Serial.println(millis()-t0);
+      */
     }
 //------------------------------------------------------------------
 //
@@ -283,6 +310,51 @@ void add2text(int value1,int value2,int value3){                 //Add value to 
 //  Append data to the large data buffer buffer always enter unit time of data added
 //  enter: void dataappend(int counts, int ampli, int SiPM, int Deadtime) (4 values)
 //
+const long double cal[] = {-9.085681659276021e-27, 4.6790804314609205e-23, -1.0317125207013292e-19,
+  1.2741066484319192e-16, -9.684460759517656e-14, 4.6937937442284284e-11, -1.4553498837275352e-08,
+   2.8216624998078298e-06, -0.000323032620672037, 0.019538631135788468, -0.3774384056850066, 12.324891083404246};
+   
+float get_sipm_voltage(float adc_value){
+  float voltage = 0;
+  for (int i = 0; i < (sizeof(cal)/sizeof(float)); i++) {
+    voltage += cal[i] * pow(adc_value,(sizeof(cal)/sizeof(float)-i-1));
+    }
+    return voltage;
+}
+void on_detection(){
+    Serial.println("Time: " +( millis()-t1));
+    noInterrupts();
+    int adc0 = analogRead(ANA0);
+    int adc1 = analogRead(ANA1);
+    int adc2 = analogRead(ANA2);
+
+    int measurement_deadtime = deadtime;
+    int time_stamp = millis() - t_start;
+    int measurement_t1 = micros();
+
+    digitalWrite(IO1, HIGH);  // Turn on reset switch
+
+    // put this between reset digital writes as delay.
+    String output_str = (String)counts + " " + time_stamp+ " " + adc0 + " " + adc1 + " " + adc2 + " " +
+                get_sipm_voltage(adc0) + get_sipm_voltage(adc1)+ " " + get_sipm_voltage(adc2)+ " " + 
+                  measurement_deadtime+ " " + "\r\n"; // add other variables like temperature and magnetic field later
+    
+
+    Serial.print(output_str);
+    //dataappend(output_str)
+    //myFile.print(output_str);
+    //myFile.flush(); // is this needed every loop? 
+        
+    digitalWrite(IO1, LOW); // Turn off reset switch
+
+    // while(analogRead(ANA1) > RESET_THRESHOLD){
+    //   Serial.println('Something went wrong*. Check waveform');
+    // }
+
+    deadtime += (micros() - measurement_t1) / 1000;
+    interrupts();
+}
+
 void dataappend(int counts,int adc0,int adc1, int adc2, int Deadtime) {          //entry, add line with values to databuffer
   //----- get and set time to entry -----
   DateTime now = rtc.now();                                               //get time of entry
