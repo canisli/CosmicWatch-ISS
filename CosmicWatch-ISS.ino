@@ -110,7 +110,7 @@ void on_detection(){
     // }
 
     total_deadtime += (micros() - measurement_t1) / 1000.;
-    interrupts()
+    interrupts();
 }
 
 // unfinished pseudocode: ignore for now
@@ -122,6 +122,6 @@ void benchmark_di(){ // do the same for analogRead.
 
         digitalRead(DI1);
         Serial.println(pinTime);
-      } )
+    } 
 }
 
