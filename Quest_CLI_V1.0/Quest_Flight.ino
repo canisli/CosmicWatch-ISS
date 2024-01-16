@@ -21,7 +21,7 @@
 //  Fast clock --- 1 hour = 5 min = 1/12 of an  hour
 //     one millie -- 1ms
 //
-#define SpeedFactor 30    // = times faster
+#define SpeedFactor 30    // = times faster. Disabled
 //
 //
 //////////////////////////////////////////////////////////////////////////
@@ -37,8 +37,9 @@
 //
   int deadtime = 0;
   int counts = 0;     //counter of times coincidence has been measured
-  int State =   0;          //FOR TESTING ONLY WILL SWITCH FROM SPI CAMERA TO SERIAL CAMERA EVERY HOUR
-  uint32_t last_nophoto30K_unixtime = 0;
+  // int State =   0;          //FOR TESTING ONLY WILL SWITCH FROM SPI CAMERA TO SERIAL CAMERA EVERY HOUR
+  uint32_t last_nophoto30K_unixtime;
+  uint32_t last_nophoto30K_millis;
 //
 ///////////////////////////////////////////////////////////////////////////
 /**
@@ -49,8 +50,9 @@
 //
 //
 
-uint32_t t_start; 
-int t1=0;
+// uint32_t t_start; 
+uint32_t t1;
+
 void Flying() {
   Serial.println("Here to Run flight program, not done yet 20230718");
   Serial.println(" 20231116 working on it");
@@ -70,16 +72,12 @@ void Flying() {
   //
   Serial.println("Instantiated pinModes");
   pinMode(IO0,  INPUT);  //And Gate
+  // Serial.println("USING IO0 AS PULLUP FOR TESTING. CHANGE BACK LATER AND SET INTERRUPT MODE TO RISING");
   pinMode(IO1, OUTPUT);  //trigger reset
   pinMode(ANA0, INPUT);
   pinMode(ANA1, INPUT);
   pinMode(ANA2, INPUT);
- 
-  t1 = millis();
-
-  attachInterrupt(IO0, on_detection, RISING);
-
-  Serial.println("Time after interrupt: " +( millis()-t1));
+  attachInterrupt(digitalPinToInterrupt(IO0), on_detection, RISING);
 
   //
   //******************************************************************
@@ -99,7 +97,8 @@ void Flying() {
   DateTime now = rtc.now();                   //get time now
   currentunix = (now.unixtime());             //get current unix time, don't count time not flying
   writelongfram(currentunix, PreviousUnix);   //set fram Mission time start now counting seconds unix time
-  last_nophoto30K_unixtime = rtc.now().unixtime();
+  last_nophoto30K_unixtime = rtc.now().unixtime(); // keep track of this so we can write elapsped times, saving storage space
+  last_nophoto30K_millis = millis(); // keep track of this so we can write elapsped times, saving storage space
   //
   //***********************************************************************
   //***********************************************************************
@@ -119,6 +118,17 @@ void Flying() {
       }                               //end check
     }                                 //end abort check
     
+    //----------- Run nophoto30K() every 20 minutes  ----------------------
+    if ((millis() - TimeEvent1) > TimeEvent1_time) {
+      TimeEvent1 = millis();
+      Serial.println("Running nophoto30K");
+      dataappend(0,0, 0,0,0); // Sanity check for the SD card
+      nophoto30K();               //Use photo buffer for data
+      last_nophoto30K_unixtime= rtc.now().unixtime();
+      last_nophoto30K_millis= micros();
+    } 
+    
+    //----------- While loop version of detection code (leave this commented out.)  ----------------------
 //    if (digitalRead(IO0 == HIGH)) {
 //      noInterrupts();
 //      uint32_t t_start = millis();
@@ -135,74 +145,52 @@ void Flying() {
 //      deadtime = millis() - t_start;
 //      interrupts();
 //    }
-    // Events to simulate cosmic ray detections
     
-    
-    if ((millis() - Sensor1Timer) > Sensor1time) {    //Is it time to read?
-          Serial.println("WOW BIG COSMIC RAY!!!!!!!!!!!!!!");
-          Sensor1Timer = millis();   
-          t_start = millis();                   
-          counts++;
-          //
-          //  Here to calculate and store data
-          //
-          //
-          //**** now get ampli and SiPM *****
-          int ampli = 9000;              //SIMULATED
-          int SiPM  = random(9000);              //SIMULATED
-          //***** end simulated *************
-          //
-          dataappend(counts, 0, ampli, SiPM, Sensor1Deadmillis);
-          Sensor1Deadmillis = millis()-t_start;      
-        }     // End of Sensor1 time event
-      //
-    
-    if ((millis() - Sensor2Timer) > Sensor2time) {    //Is it time to read?
-      
-      
-      Serial.println("Cosmic ray detected!");
+    //----------- Two events to simulate cosmic ray detections  ----------------------
+    // if ((millis() - Sensor1Timer) > Sensor1time) {
+    //       Serial.println("Simulated MAJOR cosmic ray detection");
+    //       Sensor1Timer = millis();   
+    //       t_start = millis();                   
+    //       counts++;
+    //       //
+    //       //  Here to calculate and store data
+    //       //
+    //       //
+    //       //**** now get ampli and SiPM *****
+    //       int ampli = 9000;              //SIMULATED
+    //       int SiPM  = random(9000);              //SIMULATED
+    //       //***** end simulated *************
+    //       //
+    //       dataappend(counts, 0, ampli, SiPM, Sensor1Deadmillis);
+    //       Sensor1Deadmillis = millis()-t_start;      
+    // }     // End of Sensor1 time event
+    if ((millis() - Sensor2Timer) > Sensor2time) {
+      Serial.println("Simulated cosmic ray detection");
       Sensor2Timer = millis();                   
-      uint32_t t_start = millis(); 
-      counts++;
-      //
-      //**** now get ampli and SiPM *****
-      int ampli = random(300);              //SIMULATED
-      int SiPM  = 77;              //SIMULATED
-      //***** end simulated *************
-      //
-      dataappend(counts , 0, ampli, SiPM, Sensor2Deadmillis);
-      Sensor2Deadmillis = millis()-t_start;
-      Serial.println(String(digitalRead(IO0)) + " " + String(analogRead(ANA0)) + " " + String(analogRead(ANA1)) + " " + String(analogRead(ANA2)));
-    
-    /*
-    int t0=millis();
+      // uint32_t t_start = millis(); 
+      // counts++;
+      // //
+      // //**** now get ampli and SiPM *****
+      // int ampli = random(300);              //SIMULATED
+      // int SiPM  = 77;              //SIMULATED
+      // //***** end simulated *************
+      // //
+      // dataappend(counts , 0, ampli, SiPM, Sensor2Deadmillis);
+      // Sensor2Deadmillis = millis()-t_start;
+      t1 = micros();
+      digitalWrite(IO0, HIGH);
+      digitalWrite(IO0, LOW);
+      //----------- Benchmark digitalRead() speed  ----------------------
+      int t0=millis();
+      // noInterrupts(); //I think this prevents time from progressing. So don't use this.
       for (int i=0; i<=10000000; i++){
-        //Serial.print("Time: ");
-    
-        digitalRead(IO0);
-        //Serial.println(pinTime);
+        digitalWrite(IO0, LOW); // LOW because HIGH will trigure the intrerupt
       } 
-      
-      Serial.print("Time: ");
+      Serial.print("Benchmark time: ");
       Serial.println(millis()-t0);
-      */
+      // interrupts();
     }
-//------------------------------------------------------------------
-//
-//*********** Timed Event 1 test ***************************************
-//
-    //  this test if TimeEvent1 time has come
-    //  See above for TimeEvent1_time settings between this event
-    //
-    if ((millis() - TimeEvent1) > TimeEvent1_time) {
-      TimeEvent1 = millis();
-      Serial.println("Running nophoto30K");
-      dataappend(0,0, 0,0,0); // Sanity check for the SD card
-      nophoto30K();               //Use photo buffer for data
-      last_nophoto30K_unixtime= rtc.now().unixtime();
-    }                                               //end of TimeEvent1_time
-    //------------------------------------------------------------------
-    //
+
 //*******************************************************************************
 //*********** One second counter timer will trigger every second ****************
 //*******************************************************************************
@@ -249,60 +237,8 @@ void Flying() {
     //
   }       // End of while 
 }         //End nof Flighting
-//
-//
-//FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-//    This is a function to adds three values to the user_text_buffer
-//    Written specificy for 2023-2024 Team F, Team B,
-//    Enter the function with "add2text(1st interger value, 2nd intergre value, 3rd intergervalue);
-//    the " - value1 " text can be changed to lable the value or removed to same space
-//    ", value2 " and ", value 3 " masy also be removed or changed to a lable.
-//    Space availiable is 1024 bytes, Note- - each Data line has a ncarrage return and a line feed
-//
-//example of calling routine:
-//       //
-//      int value1 = 55;
-//      int value2 = 55000;
-//      int value3 = 14;
-//      add2text(value1, value2, value3);
-//      //
-//EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE     
-//
-void add2text(int value1,int value2,int value3){                 //Add value to text file
-        if (strlen(user_text_buf0) >= (sizeof(user_text_buf0)-100)){    //Check for full
-          Serial.println("text buffer full");                           //yes, say so
-          return;                                                       //back to calling
-        }
-        char temp[11];                  // Maximum number of digits for a 32-bit integer 
-        int index = 10;                 //Start from the end of the temperary buffer  
-        char str[12];                   //digits + null terminator   
-//--------- get time and convert to str for entry into text buffer ----
-        DateTime now = rtc.now();                   //get time of entry
-        uint32_t value = now.unixtime();            //get unix time from entry
-        do {
-            temp[index--] = '0' + (value % 10);     // Convert the least significant digit to ASCII
-            value /= 10;                            // Move to the next digit
-        } while (value != 0);
-        strcpy(str, temp + index +1);               // Copy the result to the output string
-//---------- end of time conversion uni time is now in str -------------       
-        strcat(user_text_buf0, (str));              //write unix time
-        //
-        // unit time finish entry into this data line
-        //
-        strcat(user_text_buf0, (" - count= "));            // seperator
-        strcat(user_text_buf0, (itoa(value1, ascii, 10)));
-        strcat(user_text_buf0, (", value2= "));
-        strcat(user_text_buf0, (itoa(value2, ascii, 10)));
-        strcat(user_text_buf0, (", value3= "));
-        strcat(user_text_buf0, (itoa(value3,  ascii, 10)));
-        strcat(user_text_buf0, ("\r\n"));
 
-        //Serial.println(strlen(user_text_buf0));  //for testing
- }
-//------end of Function to add to user text buffer ------       
-//
-//=============================================================================
-//
+
 ////FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 //  Function to write into a 30K databuffer
 //    char databuffer[30000];         // Create a character buffer with a size of 2KB
@@ -310,55 +246,13 @@ void add2text(int value1,int value2,int value3){                 //Add value to 
 //  Append data to the large data buffer buffer always enter unit time of data added
 //  enter: void dataappend(int counts, int ampli, int SiPM, int Deadtime) (4 values)
 //
-const long double cal[] = {-9.085681659276021e-27, 4.6790804314609205e-23, -1.0317125207013292e-19,
-  1.2741066484319192e-16, -9.684460759517656e-14, 4.6937937442284284e-11, -1.4553498837275352e-08,
-   2.8216624998078298e-06, -0.000323032620672037, 0.019538631135788468, -0.3774384056850066, 12.324891083404246};
-   
-float get_sipm_voltage(float adc_value){
-  float voltage = 0;
-  for (int i = 0; i < (sizeof(cal)/sizeof(float)); i++) {
-    voltage += cal[i] * pow(adc_value,(sizeof(cal)/sizeof(float)-i-1));
-    }
-    return voltage;
-}
-void on_detection(){
-    Serial.println("Time: " +( millis()-t1));
-    noInterrupts();
-    int adc0 = analogRead(ANA0);
-    int adc1 = analogRead(ANA1);
-    int adc2 = analogRead(ANA2);
-
-    int measurement_deadtime = deadtime;
-    int time_stamp = millis() - t_start;
-    int measurement_t1 = micros();
-
-    digitalWrite(IO1, HIGH);  // Turn on reset switch
-
-    // put this between reset digital writes as delay.
-    String output_str = (String)counts + " " + time_stamp+ " " + adc0 + " " + adc1 + " " + adc2 + " " +
-                get_sipm_voltage(adc0) + get_sipm_voltage(adc1)+ " " + get_sipm_voltage(adc2)+ " " + 
-                  measurement_deadtime+ " " + "\r\n"; // add other variables like temperature and magnetic field later
-    
-
-    Serial.print(output_str);
-    //dataappend(output_str)
-    //myFile.print(output_str);
-    //myFile.flush(); // is this needed every loop? 
-        
-    digitalWrite(IO1, LOW); // Turn off reset switch
-
-    // while(analogRead(ANA1) > RESET_THRESHOLD){
-    //   Serial.println('Something went wrong*. Check waveform');
-    // }
-
-    deadtime += (micros() - measurement_t1) / 1000;
-    interrupts();
-}
 
 void dataappend(int counts,int adc0,int adc1, int adc2, int Deadtime) {          //entry, add line with values to databuffer
   //----- get and set time to entry -----
   DateTime now = rtc.now();                                               //get time of entry
-  String stringValue = String(now.unixtime()-last_nophoto30K_unixtime);                            //convert unix time to string
+  //String stringValue = String(now.unixtime()-last_nophoto30K_unixtime);                            //convert unix time to string
+  String stringValue = String(millis()-last_nophoto30K_millis);
+  // update last_nophoto30K_millis and last_nophoto30K_unixtime in nophoto event code
   const char* charValue = stringValue.c_str();                            //convert to a C string value
   appendToBuffer(charValue);                                              //Sent unix time to databuffer
   //----- add formated string to buffer -----
@@ -383,6 +277,46 @@ void  appendToBuffer(const char* data) {                                   //ent
   }       //end not enough space
 }         //end appendToBuffer
 //
-
 //=================================================================================================================
-//
+
+// const long double cal[] = {-9.085681659276021e-27, 4.6790804314609205e-23, -1.0317125207013292e-19,
+//   1.2741066484319192e-16, -9.684460759517656e-14, 4.6937937442284284e-11, -1.4553498837275352e-08,
+//    2.8216624998078298e-06, -0.000323032620672037, 0.019538631135788468, -0.3774384056850066, 12.324891083404246};
+   
+// float get_sipm_voltage(float adc_value){
+//   float voltage = 0;
+//   for (int i = 0; i < (sizeof(cal)/sizeof(float)); i++) {
+//     voltage += cal[i] * pow(adc_value,(sizeof(cal)/sizeof(float)-i-1));
+//     }
+//     return voltage;
+// }
+void on_detection(){
+    uint32_t tf = micros();
+    Serial.print("Interrupt triggered after Time: ");
+    Serial.println(tf-t1);
+    noInterrupts();
+    int adc0 = analogRead(ANA0);
+    int adc1 = analogRead(ANA1);
+    int adc2 = analogRead(ANA2);
+
+    int measurement_deadtime = deadtime;
+    int measurement_t1 = micros();
+    counts += 1;
+
+    digitalWrite(IO1, HIGH);  // Turn on reset switch
+
+    dataappend(counts, adc0, adc1, adc2, measurement_deadtime);
+    
+    //myFile.print(output_str);
+    //myFile.flush(); // is this needed every loop? 
+        
+    digitalWrite(IO1, LOW); // Turn off reset switch
+
+    // while(analogRead(ANA1) > RESET_THRESHOLD){
+    //   Serial.println('Something went wrong*. Check waveform');
+    // }
+
+    deadtime += (micros() - measurement_t1) / 1000; // keep track of cumulative deadtime
+    interrupts();
+}
+
